@@ -11,9 +11,43 @@ using Microsoft.Data.Sqlite;
 
 namespace ShowNetLog
 {
+    public class NetLogEntry
+    {
+        public string? StartTime { get; set; }
+        public long Duration { get; set; }
+        public string? AppPath { get; set; }
+        public string? Protocol { get; set; }
+        public string? LocalIp { get; set; }
+        public int LocalPort { get; set; }
+        public string? RemoteIp { get; set; }
+        public int RemotePort { get; set; }
+        public string? LocalDomain { get; set; }
+        public string? RemoteDomain { get; set; }
+        public long DataIn { get; set; }
+        public long DataOut { get; set; }
+    }
+
+    public class PortFilterItem : INotifyPropertyChanged
+    {
+        private bool _isSelected = true;
+        public int Port { get; set; }
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
+
     public partial class MainWindow : Window
     {
         private ObservableCollection<NetLogEntry> _logs = new ObservableCollection<NetLogEntry>();
+        private ObservableCollection<PortFilterItem> _portFilters = new ObservableCollection<PortFilterItem>();
         private ICollectionView? _logsView;
         private string _dbPath = @"C:\ProgramData\Locktime\NetLimiter\5\Stats\nlstats.db";
 
@@ -26,19 +60,33 @@ namespace ShowNetLog
                 _logsView.Filter = FilterLogs;
             }
             LogDataGrid.ItemsSource = _logsView;
+            PortFilterComboBox.ItemsSource = _portFilters;
             
             Loaded += MainWindow_Loaded;
         }
 
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            LoadData();
+            await LoadDataAsync();
         }
 
         private bool FilterLogs(object obj)
         {
             if (obj is NetLogEntry entry)
             {
+                // Handle "Remote All" filter (Hide Unknown Remote IPs if unchecked)
+                if (RemoteAllCheckBox.IsChecked == false && entry.RemoteIp == "Unknown")
+                {
+                    return false;
+                }
+
+                // Handle Port Filter
+                var portFilter = _portFilters.FirstOrDefault(p => p.Port == entry.RemotePort);
+                if (portFilter != null && !portFilter.IsSelected)
+                {
+                    return false;
+                }
+
                 string filterText = FilterTextBox.Text.ToLower();
                 if (string.IsNullOrWhiteSpace(filterText)) return true;
 
@@ -51,15 +99,19 @@ namespace ShowNetLog
             return false;
         }
 
-        private void LoadData()
+        private async System.Threading.Tasks.Task LoadDataAsync()
         {
             StatusTextBlock.Text = "Loading data...";
+            LoadingProgressBar.Visibility = Visibility.Visible;
+            LoadingProgressBar.IsIndeterminate = true;
             _logs.Clear();
+            _portFilters.Clear();
 
             if (!File.Exists(_dbPath))
             {
                 MessageBox.Show($"Database file not found: {_dbPath}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusTextBlock.Text = "Database not found.";
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
                 return;
             }
 
@@ -68,8 +120,20 @@ namespace ShowNetLog
                 string connectionString = $"Data Source={_dbPath};Mode=ReadOnly";
                 using (var connection = new SqliteConnection(connectionString))
                 {
-                    connection.Open();
+                    await connection.OpenAsync();
 
+                    // Step 1: Count rows for progress
+                    var countCommand = connection.CreateCommand();
+                    countCommand.CommandText = "SELECT COUNT(*) FROM Cnns WHERE TotalDataIn > 0 OR TotalDataOut > 0";
+                    long totalRows = (long)(await countCommand.ExecuteScalarAsync() ?? 0L);
+                    
+                    if (totalRows > 1000) totalRows = 1000; // Matching the LIMIT in the main query
+
+                    LoadingProgressBar.IsIndeterminate = false;
+                    LoadingProgressBar.Maximum = totalRows;
+                    LoadingProgressBar.Value = 0;
+
+                    // Step 2: Load rows
                     string sql = @"
 SELECT 
     strftime('%Y-%m-%d %H:%M:%S', printf('%d', (c.TimeStart/1000 - 11644473600)), 'unixepoch', 'localtime') AS [StartTime],
@@ -121,11 +185,13 @@ LIMIT 1000;
                     var command = connection.CreateCommand();
                     command.CommandText = sql;
 
-                    using (var reader = command.ExecuteReader())
+                    var ports = new HashSet<int>();
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        while (reader.Read())
+                        int loadedCount = 0;
+                        while (await reader.ReadAsync())
                         {
-                            _logs.Add(new NetLogEntry
+                            var entry = new NetLogEntry
                             {
                                 StartTime = reader.GetString(0),
                                 Duration = reader.GetInt64(1),
@@ -139,8 +205,25 @@ LIMIT 1000;
                                 RemoteDomain = reader.GetString(9),
                                 DataIn = reader.GetInt64(10),
                                 DataOut = reader.GetInt64(11)
-                            });
+                            };
+                            _logs.Add(entry);
+                            ports.Add(entry.RemotePort);
+                            
+                            loadedCount++;
+                            if (loadedCount % 10 == 0) // Update progress every 10 rows
+                            {
+                                LoadingProgressBar.Value = loadedCount;
+                                StatusTextBlock.Text = $"Loading {loadedCount} of {totalRows}...";
+                                await System.Threading.Tasks.Task.Delay(1); // Yield to UI thread
+                            }
                         }
+                    }
+
+                    foreach (var port in ports.OrderBy(p => p))
+                    {
+                        var filterItem = new PortFilterItem { Port = port };
+                        filterItem.PropertyChanged += (s, ev) => _logsView?.Refresh();
+                        _portFilters.Add(filterItem);
                     }
                 }
                 StatusTextBlock.Text = $"Loaded {_logs.Count} entries.";
@@ -150,6 +233,10 @@ LIMIT 1000;
                 MessageBox.Show($"Error loading data: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusTextBlock.Text = "Error loading data.";
             }
+            finally
+            {
+                LoadingProgressBar.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -157,9 +244,40 @@ LIMIT 1000;
             _logsView?.Refresh();
         }
 
-        private void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            LoadData();
+            await LoadDataAsync();
+        }
+
+
+        private void GroupByAppCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_logsView == null) return;
+
+            _logsView.GroupDescriptions.Clear();
+            if (GroupByAppCheckBox.IsChecked == true)
+            {
+                _logsView.GroupDescriptions.Add(new PropertyGroupDescription("AppPath"));
+            }
+        }
+
+        private void RemoteAllCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            _logsView?.Refresh();
+        }
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var currentShowAll = LocalIpColumn.Visibility == Visibility.Visible;
+            var settingsWin = new SettingsWindow(currentShowAll);
+            settingsWin.Owner = this;
+            settingsWin.AllColumnsChanged += (s, showAll) =>
+            {
+                var visibility = showAll ? Visibility.Visible : Visibility.Collapsed;
+                LocalIpColumn.Visibility = visibility;
+                LocalDomainColumn.Visibility = visibility;
+            };
+            settingsWin.ShowDialog();
         }
     }
 }

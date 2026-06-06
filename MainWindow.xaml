@@ -13,23 +13,72 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Orientation="Horizontal" Margin="10">
-            <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <TextBox x:Name="FilterTextBox" Width="300" TextChanged="FilterTextBox_TextChanged" Margin="0,0,10,0"/>
-            <Button Content="Refresh" Click="RefreshButton_Click" Padding="10,2"/>
-        </StackPanel>
+        <Grid Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox x:Name="FilterTextBox" Width="150" TextChanged="FilterTextBox_TextChanged" Margin="0,0,10,0"/>
+                <TextBlock Text="RPort:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <ComboBox x:Name="PortFilterComboBox" Width="100" Margin="0,0,10,0">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Port}" IsChecked="{Binding IsSelected}" Margin="2,0"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <CheckBox x:Name="GroupByAppCheckBox" Content="Group by App" VerticalAlignment="Center" Margin="0,0,10,0" Checked="GroupByAppCheckBox_Changed" Unchecked="GroupByAppCheckBox_Changed"/>
+                <CheckBox x:Name="RemoteAllCheckBox" Content="Remote All" VerticalAlignment="Center" Margin="0,0,10,0" Checked="RemoteAllCheckBox_Changed" Unchecked="RemoteAllCheckBox_Changed" IsChecked="False"/>
+                <Button Content="Refresh" Click="RefreshButton_Click" Padding="10,2"/>
+            </StackPanel>
+            <Button Grid.Column="1" Click="SettingsButton_Click" Padding="5" VerticalAlignment="Center" ToolTip="Settings">
+                <TextBlock Text="⚙" FontSize="16"/>
+            </Button>
+        </Grid>
         
         <DataGrid x:Name="LogDataGrid" Grid.Row="1" Margin="10" AutoGenerateColumns="False" IsReadOnly="True" AlternatingRowBackground="#F0F0F0">
+            <DataGrid.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Background="LightGray" Margin="0,2">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="10,2"/>
+                                <TextBlock Text=" (" Foreground="Gray" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ItemCount}" Foreground="Gray" VerticalAlignment="Center"/>
+                                <TextBlock Text=" items)" Foreground="Gray" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                    <GroupStyle.ContainerStyle>
+                        <Style TargetType="{x:Type GroupItem}">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type GroupItem}">
+                                        <Expander IsExpanded="False">
+                                            <Expander.Header>
+                                                <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                                            </Expander.Header>
+                                            <ItemsPresenter />
+                                        </Expander>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </GroupStyle.ContainerStyle>
+                </GroupStyle>
+            </DataGrid.GroupStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime}"/>
                 <DataGridTextColumn Header="Duration" Binding="{Binding Duration}"/>
                 <DataGridTextColumn Header="App Path" Binding="{Binding AppPath}" Width="200"/>
                 <DataGridTextColumn Header="Proto" Binding="{Binding Protocol}"/>
-                <DataGridTextColumn Header="Local IP" Binding="{Binding LocalIp}"/>
+                <DataGridTextColumn x:Name="LocalIpColumn" Header="Local IP" Binding="{Binding LocalIp}" Visibility="Collapsed"/>
                 <DataGridTextColumn Header="LPort" Binding="{Binding LocalPort}"/>
                 <DataGridTextColumn Header="Remote IP" Binding="{Binding RemoteIp}"/>
                 <DataGridTextColumn Header="RPort" Binding="{Binding RemotePort}"/>
-                <DataGridTextColumn Header="Local Domain" Binding="{Binding LocalDomain}"/>
+                <DataGridTextColumn x:Name="LocalDomainColumn" Header="Local Domain" Binding="{Binding LocalDomain}" Visibility="Collapsed"/>
                 <DataGridTextColumn Header="Remote Domain" Binding="{Binding RemoteDomain}"/>
                 <DataGridTextColumn Header="Data In" Binding="{Binding DataIn}"/>
                 <DataGridTextColumn Header="Data Out" Binding="{Binding DataOut}"/>
@@ -39,6 +88,9 @@
         <StatusBar Grid.Row="2">
             <StatusBarItem>
                 <TextBlock x:Name="StatusTextBlock" Text="Ready"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <ProgressBar x:Name="LoadingProgressBar" Width="200" Height="15" Visibility="Collapsed" Minimum="0" Maximum="100"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>
