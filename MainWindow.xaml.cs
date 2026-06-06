@@ -1,7 +1,9 @@
+// Copyright (c) 2026 LanDen Labs - Dennis Lang
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -50,6 +52,8 @@ namespace ShowNetLog
         private ObservableCollection<PortFilterItem> _portFilters = new ObservableCollection<PortFilterItem>();
         private ICollectionView? _logsView;
         private string _dbPath = @"C:\ProgramData\Locktime\NetLimiter\5\Stats\nlstats.db";
+        private double _currentZoom = 1.0;
+        private const double ZoomStep = 0.1;
 
         public MainWindow()
         {
@@ -226,7 +230,7 @@ LIMIT 1000;
                         _portFilters.Add(filterItem);
                     }
                 }
-                StatusTextBlock.Text = $"Loaded {_logs.Count} entries.";
+                UpdateStatusAndRange();
             }
             catch (Exception ex)
             {
@@ -236,6 +240,38 @@ LIMIT 1000;
             finally
             {
                 LoadingProgressBar.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void UpdateStatusAndRange()
+        {
+            StatusTextBlock.Text = $"Loaded {_logs.Count} entries.";
+
+            if (_logs.Count > 0)
+            {
+                var dates = _logs.Select(l => 
+                {
+                    if (DateTime.TryParseExact(l.StartTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+                        return dt;
+                    return (DateTime?)null;
+                }).Where(d => d.HasValue).Select(d => d!.Value).ToList();
+
+                if (dates.Count > 0)
+                {
+                    var min = dates.Min();
+                    var max = dates.Max();
+                    var tz = TimeZoneInfo.Local.IsDaylightSavingTime(max) ? TimeZoneInfo.Local.DaylightName : TimeZoneInfo.Local.StandardName;
+                    // Attempting to get a 3-letter abbreviation (not always available, but better than full name)
+                    string tzAbbr = new string(tz.Where(char.IsUpper).ToArray());
+                    if (string.IsNullOrEmpty(tzAbbr)) tzAbbr = tz;
+
+                    string format = "ddd d-MMM-yyyy h:mm tt";
+                    TimeRangeTextBlock.Text = $"From:  {min.ToString(format, CultureInfo.InvariantCulture)} {tzAbbr}  To:  {max.ToString(format, CultureInfo.InvariantCulture)} {tzAbbr}";
+                }
+            }
+            else
+            {
+                TimeRangeTextBlock.Text = "No data loaded.";
             }
         }
 
@@ -278,6 +314,23 @@ LIMIT 1000;
                 LocalDomainColumn.Visibility = visibility;
             };
             settingsWin.ShowDialog();
+        }
+
+        private void ZoomIn_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateZoom(ZoomStep);
+        }
+
+        private void ZoomOut_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateZoom(-ZoomStep);
+        }
+
+        private void UpdateZoom(double delta)
+        {
+            _currentZoom = Math.Max(0.5, Math.Min(3.0, _currentZoom + delta));
+            ZoomTextBlock.Text = $"{Math.Round(_currentZoom * 100)}%";
+            LogDataGrid.FontSize = 12 * _currentZoom;
         }
     }
 }

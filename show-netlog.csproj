@@ -1,16 +1,28 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<!-- Copyright (c) 2026 LanDen Labs - Dennis Lang -->
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <RootNamespace>show_netlog</RootNamespace>
+    <RootNamespace>ShowNetLog</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <Copyright>Copyright (c) 2026 LanDen Labs - Dennis Lang</Copyright>
+    <Authors>Dennis Lang</Authors>
+    <Company>LanDen Labs</Company>
+    <Product>NetLimiter Log Viewer</Product>
+    <Description>Display sortable and filterable NetLimiter network logs.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="screens\icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

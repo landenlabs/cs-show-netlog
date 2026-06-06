@@ -1,7 +1,9 @@
+<!-- Copyright (c) 2026 LanDen Labs - Dennis Lang -->
 <Window x:Class="ShowNetLog.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Settings" Height="300" Width="400" WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        Title="Settings" Height="300" Width="400" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Icon="screens/icon.png">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
