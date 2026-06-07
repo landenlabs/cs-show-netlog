@@ -54,6 +54,7 @@ namespace ShowNetLog
         private string _dbPath = @"C:\ProgramData\Locktime\NetLimiter\5\Stats\nlstats.db";
         private double _currentZoom = 1.0;
         private const double ZoomStep = 0.1;
+        private SummaryWindow? _summaryWindow;
 
         public MainWindow()
         {
@@ -231,6 +232,7 @@ LIMIT 1000;
                     }
                 }
                 UpdateStatusAndRange();
+                _summaryWindow?.UpdateData(_logs);
             }
             catch (Exception ex)
             {
@@ -283,6 +285,21 @@ LIMIT 1000;
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
             await LoadDataAsync();
+        }
+
+        private void SummaryButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_summaryWindow == null)
+            {
+                _summaryWindow = new SummaryWindow(_logs);
+                _summaryWindow.Owner = this;
+                _summaryWindow.Closed += (s, ev) => _summaryWindow = null;
+                _summaryWindow.Show();
+            }
+            else
+            {
+                _summaryWindow.Activate();
+            }
         }
 
 

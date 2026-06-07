@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 LanDen Labs - Dennis Lang -->
+﻿<!-- Copyright (c) 2026 LanDen Labs - Dennis Lang -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -20,9 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="screens\icon.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Resource Include="screens\icon.png" />
   </ItemGroup>
 
 </Project>

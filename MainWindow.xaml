@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:ShowNetLog"
         mc:Ignorable="d"
         Title="NetLimiter Log Viewer" Height="600" Width="1000"
-        Icon="screens/icon.png">
+        Icon="/screens/icon.png">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -33,7 +33,8 @@
                 </ComboBox>
                 <CheckBox x:Name="GroupByAppCheckBox" Content="Group by App" VerticalAlignment="Center" Margin="0,0,10,0" Checked="GroupByAppCheckBox_Changed" Unchecked="GroupByAppCheckBox_Changed"/>
                 <CheckBox x:Name="RemoteAllCheckBox" Content="Remote All" VerticalAlignment="Center" Margin="0,0,10,0" Checked="RemoteAllCheckBox_Changed" Unchecked="RemoteAllCheckBox_Changed" IsChecked="False"/>
-                <Button Content="Refresh" Click="RefreshButton_Click" Padding="10,2"/>
+                <Button Content="Refresh" Click="RefreshButton_Click" Padding="10,2" Margin="0,0,10,0"/>
+                <Button Content="Summary" Click="SummaryButton_Click" Padding="10,2"/>
             </StackPanel>
             <Button Grid.Column="1" Click="SettingsButton_Click" Padding="5" VerticalAlignment="Center" ToolTip="Settings">
                 <TextBlock Text="⚙" FontSize="16"/>
